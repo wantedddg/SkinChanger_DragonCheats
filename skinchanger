@@ -1,0 +1,175 @@
+local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Import = ReplicatedStorage:WaitForChild("Import")
+local Guns = Import:WaitForChild("Guns")
+local Viewmodels = Guns:WaitForChild("Viewmodels")
+
+local Assets = Import:WaitForChild("Assets")
+local Skins = Assets:WaitForChild("Skins")
+
+local ButterflySkin = Skins:WaitForChild("butterflyknife")
+local DopplerRuby = ButterflySkin:WaitForChild("Doppler Ruby")
+
+local KnifeStorage = ReplicatedStorage:FindFirstChild("KnifeStorage")
+if not KnifeStorage then
+    KnifeStorage = Instance.new("Folder")
+    KnifeStorage.Name = "KnifeStorage"
+    KnifeStorage.Parent = ReplicatedStorage
+end
+
+for _, knife in ipairs(Viewmodels:GetChildren()) do
+    if knife:IsA("Model") and not KnifeStorage:FindFirstChild(knife.Name) then
+        knife:Clone().Parent = KnifeStorage
+    end
+end
+
+local function safeDestroy(name)
+    local obj = Viewmodels:FindFirstChild(name)
+    if obj then obj:Destroy() end
+end
+
+local function removeTextures(viewmodel)
+    for _, part in ipairs(viewmodel:GetDescendants()) do
+        if part:IsA("BasePart") then
+            for _, child in ipairs(part:GetChildren()) do
+                if child:IsA("Texture") or child:IsA("Decal") or child:IsA("SurfaceAppearance") then
+                    child:Destroy()
+                end
+            end
+        end
+    end
+end
+
+local function applySkin(viewmodel, skinFolder)
+    for _, part in ipairs(viewmodel:GetDescendants()) do
+        if part:IsA("BasePart") then
+            for _, tex in ipairs(skinFolder:GetChildren()) do
+                if tex:IsA("Texture") or tex:IsA("Decal") or tex:IsA("SurfaceAppearance") then
+                    if not part:FindFirstChild(tex.Name) then
+                        tex:Clone().Parent = part
+                    end
+                end
+            end
+        end
+    end
+end
+
+local function equipKnife(knifeName)
+    safeDestroy("v_TKnife")
+    safeDestroy("v_CTKnife")
+
+    local baseKnife = KnifeStorage:FindFirstChild(knifeName)
+    if not baseKnife then
+        warn("❌ Knife not found:", knifeName)
+        return
+    end
+
+    local tKnife = baseKnife:Clone()
+    tKnife.Name = "v_TKnife"
+    tKnife.Parent = Viewmodels
+
+    local ctKnife = baseKnife:Clone()
+    ctKnife.Name = "v_CTKnife"
+    ctKnife.Parent = Viewmodels
+end
+
+local function skinButterfly()
+    local tKnife = Viewmodels:FindFirstChild("v_TKnife")
+    local ctKnife = Viewmodels:FindFirstChild("v_CTKnife")
+    if not tKnife or not ctKnife then
+        warn("❌ Butterfly knife not equipped")
+        return
+    end
+
+    removeTextures(tKnife)
+    removeTextures(ctKnife)
+
+    applySkin(tKnife, DopplerRuby)
+    applySkin(ctKnife, DopplerRuby)
+end
+
+local weaponSkinTable = {
+    {Name = "AK-47", Viewmodel = "v_AK47", SkinFolder = "ak47"},
+    {Name = "M4A1", Viewmodel = "v_M4A1", SkinFolder = "m4a1"},
+    {Name = "AWP", Viewmodel = "v_AWP", SkinFolder = "awp"},
+    {Name = "Desert Eagle", Viewmodel = "v_DesertEagle", SkinFolder = "deserteagle"},
+	{Name = "USP", Viewmodel = "v_USP", SkinFolder = "usp"},
+}
+
+local function skinWeapon(viewmodelName, skinFolder)
+    local vm = Viewmodels:FindFirstChild(viewmodelName)
+    if not vm then
+        warn("❌ Weapon not equipped:", viewmodelName)
+        return
+    end
+    removeTextures(vm)
+    applySkin(vm, skinFolder)
+end
+
+local Window = WindUI:CreateWindow({
+    Title = "Dragon Cheats",
+    Icon = "door-open",
+    Author = "Skin Changer",
+    Folder = "SkinChanger",
+    Size = UDim2.fromOffset(580, 460),
+    MinSize = Vector2.new(560, 350),
+    MaxSize = Vector2.new(850, 560),
+    Transparent = true,
+    Theme = "Dark",
+    Resizable = true,
+    SideBarWidth = 200,
+    BackgroundImageTransparency = 0.42,
+    HideSearchBar = true,
+    ScrollBarEnabled = false,
+})
+
+local KnifeTab = Window:Tab({Title = "Knives", Icon = "sword"})
+local KnifeSkins = Window:Tab({Title = "Knife Skins", Icon = "sword"})
+local WeaponSkins = Window:Tab({Title = "Weapon Skins", Icon = "sword"})
+local KeybindTab = Window:Tab({Title = "Keybinds", Icon = "bird"})
+
+local knifeOptions = {"v_ButterflyKnife", "v_Karambit", "v_stiletto", "v_skeleton", "v_noobCTKnife", "v_canisold", "v_canis", "v_SurvivalKnife"}
+for _, knifeName in ipairs(knifeOptions) do
+    KnifeTab:Button({
+        Title = knifeName:gsub("v_", ""),
+        Desc = "Equip " .. knifeName,
+        Locked = false,
+        Callback = function() equipKnife(knifeName) end
+    })
+end
+
+KnifeSkins:Button({
+    Title = "Butterfly Doppler",
+    Desc = "Apply Doppler skin to Butterfly knife",
+    Locked = false,
+    Callback = skinButterfly
+})
+
+for _, weapon in ipairs(weaponSkinTable) do
+    local skinRoot = Skins:FindFirstChild(weapon.SkinFolder)
+    if skinRoot then
+        for _, skin in ipairs(skinRoot:GetChildren()) do
+            if skin:IsA("Folder") then
+                WeaponSkins:Button({
+                    Title = weapon.Name .. " - " .. skin.Name,
+                    Desc = "Apply " .. skin.Name .. " skin",
+                    Locked = false,
+                    Callback = function()
+                        skinWeapon(weapon.Viewmodel, skin)
+                    end
+                })
+            end
+        end
+    end
+end
+
+local UIToggle = KeybindTab:Keybind({
+    Title = "Keybind",
+    Desc = "Keybind to open ui",
+    Value = "G",
+    Callback = function(v)
+        Window:SetToggleKey(Enum.KeyCode[v])
+    end
+})
